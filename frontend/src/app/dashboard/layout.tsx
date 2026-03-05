@@ -10,11 +10,14 @@ import { useTheme } from "@/lib/theme-provider";
 import { PermissionsProvider, usePermissions } from "@/contexts/permissions";
 import { Button } from "@/components/ui/button";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Users,
-  Settings,
   LogOut,
-  Car,
-  FileText,
   Menu,
   X,
   LayoutDashboard,
@@ -25,7 +28,11 @@ import {
   MapPin,
   Building2,
   BarChart3,
+  PanelLeftClose,
+  PanelLeft,
 } from "lucide-react";
+
+const SIDEBAR_COLLAPSED_KEY = "moto-sidebar-collapsed";
 
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -34,6 +41,16 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const { user, loading, isAdmin, isSuperAdmin, hasPermission } =
     usePermissions();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // Restore and persist sidebar collapsed state (client-only to avoid hydration mismatch)
+  useEffect(() => {
+    const stored = window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
+    if (stored === "true") setSidebarCollapsed(true);
+  }, []);
+  useEffect(() => {
+    window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(sidebarCollapsed));
+  }, [sidebarCollapsed]);
 
   // Set browser tab title to organization name (fallback to Autopulse)
   useEffect(() => {
@@ -110,198 +127,243 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       <div className="flex">
         {/* Sidebar */}
         <aside
-          className={`fixed left-0 top-0 z-40 h-screen w-64 sm:w-64 md:w-72 border-r bg-gradient-to-b from-card to-card/95 shadow-lg sidebar-enter lg:relative lg:translate-x-0 lg:sticky lg:top-0 lg:h-screen lg:w-56 xl:w-60 lg:shadow-none lg:z-auto ${
+          className={`fixed left-0 top-0 z-40 h-screen w-64 sm:w-64 md:w-72 border-r bg-gradient-to-b from-card to-card/95 shadow-lg sidebar-enter lg:relative lg:translate-x-0 lg:sticky lg:top-0 lg:h-screen lg:shadow-none lg:z-auto transition-[width] duration-200 overflow-x-hidden ${
             sidebarOpen
               ? "translate-x-0 pt-14 sm:pt-16 lg:pt-0"
               : "-translate-x-full"
-          }`}
+          } ${sidebarCollapsed ? "lg:w-16" : "lg:w-56 xl:w-60"}`}
         >
-          <div className="flex flex-col h-full items-center py-3 px-3">
-            {/* Logo/Theme-aware Logo */}
-            <div className="mb-1 hidden md:flex items-center justify-center w-full px-2">
-              <img
-                src="/autopluse-black.png"
-                alt="Logo"
-                className="h-14 w-full object-contain dark:hidden"
-              />
-              <img
-                src="/autopluse-white.png"
-                alt="Logo"
-                className="h-14 w-full object-contain hidden dark:block"
-              />
+          <TooltipProvider delayDuration={0}>
+          <div className="flex flex-col h-full items-stretch py-3 px-3 min-w-0 overflow-x-hidden">
+            {/* Logo + desktop sidebar toggle */}
+            <div className="mb-1 hidden md:flex items-center justify-center w-full px-2 min-h-[3.5rem]">
+              {!sidebarCollapsed && (
+                <>
+                  <img
+                    src="/autopluse-black.png"
+                    alt="Logo"
+                    className="h-14 w-full object-contain dark:hidden"
+                  />
+                  <img
+                    src="/autopluse-white.png"
+                    alt="Logo"
+                    className="h-14 w-full object-contain hidden dark:block"
+                  />
+                </>
+              )}
+              {sidebarCollapsed && (
+                <>
+                  <img
+                    src="/autopluse-black.png"
+                    alt="Logo"
+                    className="h-8 w-8 object-contain dark:hidden"
+                  />
+                  <img
+                    src="/autopluse-white.png"
+                    alt="Logo"
+                    className="h-8 w-8 object-contain hidden dark:block"
+                  />
+                </>
+              )}
             </div>
-
-            {/* Powered by link */}
-            <a
-              href="https://prominds.digital/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mb-2 hidden md:flex items-center justify-center text-xs text-muted-foreground hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
-            >
-              Powered by{" "}
-              <span className="font-semibold ml-1">Prominds Digital</span>
-            </a>
+            {/* Powered by link - hide when collapsed */}
+            {!sidebarCollapsed && (
+              <a
+                href="https://prominds.digital/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mb-2 hidden md:flex items-center justify-center text-xs text-muted-foreground hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer px-2"
+              >
+                Powered by{" "}
+                <span className="font-semibold ml-1">Prominds Digital</span>
+              </a>
+            )}
 
             {/* Navigation */}
             <nav className="flex-1 flex flex-col items-start space-y-1 w-full overflow-y-auto px-1">
               {/* Dashboard */}
               {hasPermission("dashboard") && (
-                <Link
-                  prefetch={false}
-                  href="/dashboard"
-                  onClick={() => setSidebarOpen(false)}
-                  className="w-full"
-                >
-                  <Button
-                    variant={pathname === "/dashboard" ? "secondary" : "ghost"}
-                    className="w-full h-10 justify-start relative min-h-[40px]"
-                  >
-                    <LayoutDashboard
-                      className="h-5 w-5 mr-3 flex-shrink-0"
-                      style={{ color: "#1976B8" }}
-                    />
-                    <span className="text-sm font-medium">Dashboard</span>
-                    {pathname === "/dashboard" && (
-                      <div
-                        className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full"
-                        style={{ backgroundColor: "#1976B8" }}
-                      />
-                    )}
-                  </Button>
-                </Link>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link
+                      prefetch={false}
+                      href="/dashboard"
+                      onClick={() => setSidebarOpen(false)}
+                      className="w-full"
+                    >
+                      <Button
+                        variant={pathname === "/dashboard" ? "secondary" : "ghost"}
+                        className={`w-full h-10 justify-start relative min-h-[40px] ${sidebarCollapsed ? "lg:justify-center lg:px-0" : ""}`}
+                      >
+                        <LayoutDashboard
+                          className={`h-5 w-5 flex-shrink-0 ${sidebarCollapsed ? "lg:mr-0" : "mr-3"}`}
+                          style={{ color: "#1976B8" }}
+                        />
+                        <span className={`text-sm font-medium ${sidebarCollapsed ? "lg:hidden" : ""}`}>Dashboard</span>
+                        {pathname === "/dashboard" && (
+                          <div
+                            className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full"
+                            style={{ backgroundColor: "#1976B8" }}
+                          />
+                        )}
+                      </Button>
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" sideOffset={8}>Dashboard</TooltipContent>
+                </Tooltip>
               )}
 
               {/* Daily Walkins */}
               {(hasPermission("dailyWalkinsVisitors") ||
                 hasPermission("dailyWalkinsSessions")) && (
-                <Link
-                  prefetch={false}
-                  href="/dashboard/daily-walkins"
-                  onClick={() => setSidebarOpen(false)}
-                  className="w-full"
-                >
-                  <Button
-                    variant={
-                      pathname === "/dashboard/daily-walkins" ||
-                      pathname?.startsWith("/dashboard/daily-walkins/")
-                        ? "secondary"
-                        : "ghost"
-                    }
-                    className="w-full h-10 justify-start relative min-h-[40px]"
-                  >
-                    <DoorOpen
-                      className="h-5 w-5 mr-3 flex-shrink-0"
-                      style={{ color: "#1976B8" }}
-                    />
-                    <span className="text-sm font-medium">Daily Walkins</span>
-                    {(pathname === "/dashboard/daily-walkins" ||
-                      pathname?.startsWith("/dashboard/daily-walkins/")) && (
-                      <div
-                        className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full"
-                        style={{ backgroundColor: "#1976B8" }}
-                      />
-                    )}
-                  </Button>
-                </Link>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link
+                      prefetch={false}
+                      href="/dashboard/daily-walkins"
+                      onClick={() => setSidebarOpen(false)}
+                      className="w-full"
+                    >
+                      <Button
+                        variant={
+                          pathname === "/dashboard/daily-walkins" ||
+                          pathname?.startsWith("/dashboard/daily-walkins/")
+                            ? "secondary"
+                            : "ghost"
+                        }
+                        className={`w-full h-10 justify-start relative min-h-[40px] ${sidebarCollapsed ? "lg:justify-center lg:px-0" : ""}`}
+                      >
+                        <DoorOpen
+                          className={`h-5 w-5 flex-shrink-0 ${sidebarCollapsed ? "lg:mr-0" : "mr-3"}`}
+                          style={{ color: "#1976B8" }}
+                        />
+                        <span className={`text-sm font-medium ${sidebarCollapsed ? "lg:hidden" : ""}`}>Daily Walkins</span>
+                        {(pathname === "/dashboard/daily-walkins" ||
+                          pathname?.startsWith("/dashboard/daily-walkins/")) && (
+                          <div
+                            className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full"
+                            style={{ backgroundColor: "#1976B8" }}
+                          />
+                        )}
+                      </Button>
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" sideOffset={8}>Daily Walkins</TooltipContent>
+                </Tooltip>
               )}
 
               {/* Digital Enquiry */}
               {hasPermission("digitalEnquiry") && (
-                <Link
-                  prefetch={false}
-                  href="/dashboard/digital-enquiry"
-                  onClick={() => setSidebarOpen(false)}
-                  className="w-full"
-                >
-                  <Button
-                    variant={
-                      pathname === "/dashboard/digital-enquiry" ||
-                      pathname?.startsWith("/dashboard/digital-enquiry/")
-                        ? "secondary"
-                        : "ghost"
-                    }
-                    className="w-full h-10 justify-start relative min-h-[40px]"
-                  >
-                    <MessageSquare
-                      className="h-5 w-5 mr-3 flex-shrink-0"
-                      style={{ color: "#1976B8" }}
-                    />
-                    <span className="text-sm font-medium">Digital Enquiry</span>
-                    {(pathname === "/dashboard/digital-enquiry" ||
-                      pathname?.startsWith("/dashboard/digital-enquiry/")) && (
-                      <div
-                        className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full"
-                        style={{ backgroundColor: "#1976B8" }}
-                      />
-                    )}
-                  </Button>
-                </Link>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link
+                      prefetch={false}
+                      href="/dashboard/digital-enquiry"
+                      onClick={() => setSidebarOpen(false)}
+                      className="w-full"
+                    >
+                      <Button
+                        variant={
+                          pathname === "/dashboard/digital-enquiry" ||
+                          pathname?.startsWith("/dashboard/digital-enquiry/")
+                            ? "secondary"
+                            : "ghost"
+                        }
+                        className={`w-full h-10 justify-start relative min-h-[40px] ${sidebarCollapsed ? "lg:justify-center lg:px-0" : ""}`}
+                      >
+                        <MessageSquare
+                          className={`h-5 w-5 flex-shrink-0 ${sidebarCollapsed ? "lg:mr-0" : "mr-3"}`}
+                          style={{ color: "#1976B8" }}
+                        />
+                        <span className={`text-sm font-medium ${sidebarCollapsed ? "lg:hidden" : ""}`}>Digital Enquiry</span>
+                        {(pathname === "/dashboard/digital-enquiry" ||
+                          pathname?.startsWith("/dashboard/digital-enquiry/")) && (
+                          <div
+                            className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full"
+                            style={{ backgroundColor: "#1976B8" }}
+                          />
+                        )}
+                      </Button>
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" sideOffset={8}>Digital Enquiry</TooltipContent>
+                </Tooltip>
               )}
 
               {/* Field Inquiry */}
               {hasPermission("fieldInquiry") && (
-                <Link
-                  prefetch={false}
-                  href="/dashboard/field-inquiry"
-                  onClick={() => setSidebarOpen(false)}
-                  className="w-full"
-                >
-                  <Button
-                    variant={
-                      pathname === "/dashboard/field-inquiry" ||
-                      pathname?.startsWith("/dashboard/field-inquiry/")
-                        ? "secondary"
-                        : "ghost"
-                    }
-                    className="w-full h-10 justify-start relative min-h-[40px]"
-                  >
-                    <MapPin
-                      className="h-5 w-5 mr-3 flex-shrink-0"
-                      style={{ color: "#1976B8" }}
-                    />
-                    <span className="text-sm font-medium">Field Inquiry</span>
-                    {(pathname === "/dashboard/field-inquiry" ||
-                      pathname?.startsWith("/dashboard/field-inquiry/")) && (
-                      <div
-                        className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full"
-                        style={{ backgroundColor: "#1976B8" }}
-                      />
-                    )}
-                  </Button>
-                </Link>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link
+                      prefetch={false}
+                      href="/dashboard/field-inquiry"
+                      onClick={() => setSidebarOpen(false)}
+                      className="w-full"
+                    >
+                      <Button
+                        variant={
+                          pathname === "/dashboard/field-inquiry" ||
+                          pathname?.startsWith("/dashboard/field-inquiry/")
+                            ? "secondary"
+                            : "ghost"
+                        }
+                        className={`w-full h-10 justify-start relative min-h-[40px] ${sidebarCollapsed ? "lg:justify-center lg:px-0" : ""}`}
+                      >
+                        <MapPin
+                          className={`h-5 w-5 flex-shrink-0 ${sidebarCollapsed ? "lg:mr-0" : "mr-3"}`}
+                          style={{ color: "#1976B8" }}
+                        />
+                        <span className={`text-sm font-medium ${sidebarCollapsed ? "lg:hidden" : ""}`}>Field Inquiry</span>
+                        {(pathname === "/dashboard/field-inquiry" ||
+                          pathname?.startsWith("/dashboard/field-inquiry/")) && (
+                          <div
+                            className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full"
+                            style={{ backgroundColor: "#1976B8" }}
+                          />
+                        )}
+                      </Button>
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" sideOffset={8}>Field Inquiry</TooltipContent>
+                </Tooltip>
               )}
 
               {/* Delivery Update */}
               {hasPermission("deliveryUpdate") && (
-                <Link
-                  prefetch={false}
-                  href="/dashboard/delivery-update"
-                  onClick={() => setSidebarOpen(false)}
-                  className="w-full"
-                >
-                  <Button
-                    variant={
-                      pathname === "/dashboard/delivery-update" ||
-                      pathname?.startsWith("/dashboard/delivery-update/")
-                        ? "secondary"
-                        : "ghost"
-                    }
-                    className="w-full h-10 justify-start relative min-h-[40px]"
-                  >
-                    <Package
-                      className="h-5 w-5 mr-3 flex-shrink-0"
-                      style={{ color: "#1976B8" }}
-                    />
-                    <span className="text-sm font-medium">Delivery Update</span>
-                    {(pathname === "/dashboard/delivery-update" ||
-                      pathname?.startsWith("/dashboard/delivery-update/")) && (
-                      <div
-                        className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full"
-                        style={{ backgroundColor: "#1976B8" }}
-                      />
-                    )}
-                  </Button>
-                </Link>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link
+                      prefetch={false}
+                      href="/dashboard/delivery-update"
+                      onClick={() => setSidebarOpen(false)}
+                      className="w-full"
+                    >
+                      <Button
+                        variant={
+                          pathname === "/dashboard/delivery-update" ||
+                          pathname?.startsWith("/dashboard/delivery-update/")
+                            ? "secondary"
+                            : "ghost"
+                        }
+                        className={`w-full h-10 justify-start relative min-h-[40px] ${sidebarCollapsed ? "lg:justify-center lg:px-0" : ""}`}
+                      >
+                        <Package
+                          className={`h-5 w-5 flex-shrink-0 ${sidebarCollapsed ? "lg:mr-0" : "mr-3"}`}
+                          style={{ color: "#1976B8" }}
+                        />
+                        <span className={`text-sm font-medium ${sidebarCollapsed ? "lg:hidden" : ""}`}>Delivery Update</span>
+                        {(pathname === "/dashboard/delivery-update" ||
+                          pathname?.startsWith("/dashboard/delivery-update/")) && (
+                          <div
+                            className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full"
+                            style={{ backgroundColor: "#1976B8" }}
+                          />
+                        )}
+                      </Button>
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" sideOffset={8}>Delivery Update</TooltipContent>
+                </Tooltip>
               )}
 
               {/* Settings */}
@@ -310,153 +372,186 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                 hasPermission("settingsLeadSources") ||
                 hasPermission("settingsWhatsApp")) && (
                 <div className="pt-1.5 border-t w-full mt-auto">
-                  <Link
-                    prefetch={false}
-                    href="/dashboard/global-settings"
-                    onClick={() => setSidebarOpen(false)}
-                    className="w-full"
-                  >
-                    <Button
-                      variant={
-                        pathname === "/dashboard/global-settings"
-                          ? "secondary"
-                          : "ghost"
-                      }
-                      className="w-full h-10 justify-start relative min-h-[40px]"
-                    >
-                      <Globe
-                        className="h-5 w-5 mr-3 flex-shrink-0"
-                        style={{ color: "#1976B8" }}
-                      />
-                      <span className="text-sm font-medium">Settings</span>
-                      {pathname === "/dashboard/global-settings" && (
-                        <div
-                          className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full"
-                          style={{ backgroundColor: "#1976B8" }}
-                        />
-                      )}
-                    </Button>
-                  </Link>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Link
+                        prefetch={false}
+                        href="/dashboard/global-settings"
+                        onClick={() => setSidebarOpen(false)}
+                        className="w-full"
+                      >
+                        <Button
+                          variant={
+                            pathname === "/dashboard/global-settings"
+                              ? "secondary"
+                              : "ghost"
+                          }
+                          className={`w-full h-10 justify-start relative min-h-[40px] ${sidebarCollapsed ? "lg:justify-center lg:px-0" : ""}`}
+                        >
+                          <Globe
+                            className={`h-5 w-5 flex-shrink-0 ${sidebarCollapsed ? "lg:mr-0" : "mr-3"}`}
+                            style={{ color: "#1976B8" }}
+                          />
+                          <span className={`text-sm font-medium ${sidebarCollapsed ? "lg:hidden" : ""}`}>Settings</span>
+                          {pathname === "/dashboard/global-settings" && (
+                            <div
+                              className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full"
+                              style={{ backgroundColor: "#1976B8" }}
+                            />
+                          )}
+                        </Button>
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" sideOffset={8}>Settings</TooltipContent>
+                  </Tooltip>
                 </div>
               )}
 
               {/* Role Management - Admin only */}
               {isAdmin && (
-                <Link
-                  prefetch={false}
-                  href="/dashboard/role-management"
-                  onClick={() => setSidebarOpen(false)}
-                  className="w-full"
-                >
-                  <Button
-                    variant={
-                      pathname === "/dashboard/role-management" ||
-                      pathname?.startsWith("/dashboard/role-management/")
-                        ? "secondary"
-                        : "ghost"
-                    }
-                    className="w-full h-10 justify-start relative min-h-[40px]"
-                  >
-                    <Users
-                      className="h-5 w-5 mr-3 flex-shrink-0"
-                      style={{ color: "#1976B8" }}
-                    />
-                    <span className="text-sm font-medium">Role Management</span>
-                    {(pathname === "/dashboard/role-management" ||
-                      pathname?.startsWith("/dashboard/role-management/")) && (
-                      <div
-                        className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full"
-                        style={{ backgroundColor: "#1976B8" }}
-                      />
-                    )}
-                  </Button>
-                </Link>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link
+                      prefetch={false}
+                      href="/dashboard/role-management"
+                      onClick={() => setSidebarOpen(false)}
+                      className="w-full"
+                    >
+                      <Button
+                        variant={
+                          pathname === "/dashboard/role-management" ||
+                          pathname?.startsWith("/dashboard/role-management/")
+                            ? "secondary"
+                            : "ghost"
+                        }
+                        className={`w-full h-10 justify-start relative min-h-[40px] ${sidebarCollapsed ? "lg:justify-center lg:px-0" : ""}`}
+                      >
+                        <Users
+                          className={`h-5 w-5 flex-shrink-0 ${sidebarCollapsed ? "lg:mr-0" : "mr-3"}`}
+                          style={{ color: "#1976B8" }}
+                        />
+                        <span className={`text-sm font-medium ${sidebarCollapsed ? "lg:hidden" : ""}`}>Role Management</span>
+                        {(pathname === "/dashboard/role-management" ||
+                          pathname?.startsWith("/dashboard/role-management/")) && (
+                          <div
+                            className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full"
+                            style={{ backgroundColor: "#1976B8" }}
+                          />
+                        )}
+                      </Button>
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" sideOffset={8}>Role Management</TooltipContent>
+                </Tooltip>
               )}
 
               {/* Organization Management - Super Admin only */}
               {isSuperAdmin && (
                 <>
-                  <div className="pt-1.5 border-t w-full">
-                    <p className="text-sm text-muted-foreground px-2 py-1.5 uppercase tracking-wider">
-                      Organization
-                    </p>
-                  </div>
-                  <Link
-                    prefetch={false}
-                    href="/dashboard/org-settings"
-                    onClick={() => setSidebarOpen(false)}
-                    className="w-full"
-                  >
-                    <Button
-                      variant={
-                        pathname === "/dashboard/org-settings"
-                          ? "secondary"
-                          : "ghost"
-                      }
-                      className="w-full h-10 justify-start relative min-h-[40px]"
-                    >
-                      <Building2
-                        className="h-5 w-5 mr-3 flex-shrink-0"
-                        style={{ color: "#1976B8" }}
-                      />
-                      <span className="text-sm font-medium">Org Settings</span>
-                      {pathname === "/dashboard/org-settings" && (
-                        <div
-                          className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full"
-                          style={{ backgroundColor: "#1976B8" }}
-                        />
-                      )}
-                    </Button>
-                  </Link>
-                  <Link
-                    prefetch={false}
-                    href="/dashboard/usage-stats"
-                    onClick={() => setSidebarOpen(false)}
-                    className="w-full"
-                  >
-                    <Button
-                      variant={
-                        pathname === "/dashboard/usage-stats"
-                          ? "secondary"
-                          : "ghost"
-                      }
-                      className="w-full h-10 justify-start relative min-h-[40px]"
-                    >
-                      <BarChart3
-                        className="h-5 w-5 mr-3 flex-shrink-0"
-                        style={{ color: "#1976B8" }}
-                      />
-                      <span className="text-sm font-medium">Usage Stats</span>
-                      {pathname === "/dashboard/usage-stats" && (
-                        <div
-                          className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full"
-                          style={{ backgroundColor: "#1976B8" }}
-                        />
-                      )}
-                    </Button>
-                  </Link>
+                  {!sidebarCollapsed && (
+                    <div className="pt-1.5 border-t w-full lg:block">
+                      <p className="text-sm text-muted-foreground px-2 py-1.5 uppercase tracking-wider">
+                        Organization
+                      </p>
+                    </div>
+                  )}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Link
+                        prefetch={false}
+                        href="/dashboard/org-settings"
+                        onClick={() => setSidebarOpen(false)}
+                        className="w-full"
+                      >
+                        <Button
+                          variant={
+                            pathname === "/dashboard/org-settings"
+                              ? "secondary"
+                              : "ghost"
+                          }
+                          className={`w-full h-10 justify-start relative min-h-[40px] ${sidebarCollapsed ? "lg:justify-center lg:px-0" : ""}`}
+                        >
+                          <Building2
+                            className={`h-5 w-5 flex-shrink-0 ${sidebarCollapsed ? "lg:mr-0" : "mr-3"}`}
+                            style={{ color: "#1976B8" }}
+                          />
+                          <span className={`text-sm font-medium ${sidebarCollapsed ? "lg:hidden" : ""}`}>Org Settings</span>
+                          {pathname === "/dashboard/org-settings" && (
+                            <div
+                              className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full"
+                              style={{ backgroundColor: "#1976B8" }}
+                            />
+                          )}
+                        </Button>
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" sideOffset={8}>Org Settings</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Link
+                        prefetch={false}
+                        href="/dashboard/usage-stats"
+                        onClick={() => setSidebarOpen(false)}
+                        className="w-full"
+                      >
+                        <Button
+                          variant={
+                            pathname === "/dashboard/usage-stats"
+                              ? "secondary"
+                              : "ghost"
+                          }
+                          className={`w-full h-10 justify-start relative min-h-[40px] ${sidebarCollapsed ? "lg:justify-center lg:px-0" : ""}`}
+                        >
+                          <BarChart3
+                            className={`h-5 w-5 flex-shrink-0 ${sidebarCollapsed ? "lg:mr-0" : "mr-3"}`}
+                            style={{ color: "#1976B8" }}
+                          />
+                          <span className={`text-sm font-medium ${sidebarCollapsed ? "lg:hidden" : ""}`}>Usage Stats</span>
+                          {pathname === "/dashboard/usage-stats" && (
+                            <div
+                              className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full"
+                              style={{ backgroundColor: "#1976B8" }}
+                            />
+                          )}
+                        </Button>
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" sideOffset={8}>Usage Stats</TooltipContent>
+                  </Tooltip>
                 </>
               )}
             </nav>
 
             {/* User actions */}
-            <div className="border-t w-full pt-2 space-y-1.5 flex flex-col items-start">
-              <Button
-                variant="ghost"
-                className="w-full h-10 justify-start"
-                onClick={handleLogout}
-              >
-                <LogOut
-                  className="h-5 w-5 mr-3 flex-shrink-0"
-                  style={{ color: "#1976B8" }}
-                />
-                <span className="text-sm font-medium">Logout</span>
-              </Button>
-              <div className="w-full">
-                <ThemeSwitcherButtons />
+            <div className="border-t w-full min-w-0 pt-2 space-y-1.5 flex flex-col items-stretch">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="w-full"
+                    onClick={handleLogout}
+                  >
+                    <Button
+                      variant="ghost"
+                      className={`w-full h-10 justify-start ${sidebarCollapsed ? "lg:justify-center lg:px-0" : ""}`}
+                    >
+                      <LogOut
+                        className={`h-5 w-5 flex-shrink-0 ${sidebarCollapsed ? "lg:mr-0" : "mr-3"}`}
+                        style={{ color: "#1976B8" }}
+                      />
+                      <span className={`text-sm font-medium ${sidebarCollapsed ? "lg:hidden" : ""}`}>Logout</span>
+                    </Button>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={8}>Logout</TooltipContent>
+              </Tooltip>
+              <div className={`w-full min-w-0 ${sidebarCollapsed ? "lg:flex lg:flex-col lg:items-stretch" : ""}`}>
+                <ThemeSwitcherButtons compact={sidebarCollapsed} />
               </div>
             </div>
           </div>
+          </TooltipProvider>
         </aside>
 
         {/* Main content */}
@@ -465,7 +560,30 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
           <div className="max-w-[1600px] mx-auto w-full">
             {/* Breadcrumb & Profile Box */}
             <div className="mb-4 sm:mb-6 lg:mb-8 border bg-card rounded-lg px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4 flex flex-row items-center justify-between shadow-sm gap-3 sm:gap-4">
-              <div className="flex-1 min-w-0 flex items-center">
+              <div className="flex-1 min-w-0 flex items-center gap-2 sm:gap-3">
+                {/* Desktop: sidebar toggle in top bar */}
+                <div className="hidden lg:flex shrink-0">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setSidebarCollapsed((c) => !c)}
+                        className="shrink-0 h-9 w-9"
+                        aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                      >
+                        {sidebarCollapsed ? (
+                          <PanelLeft className="h-5 w-5" style={{ color: "#1976B8" }} />
+                        ) : (
+                          <PanelLeftClose className="h-5 w-5" style={{ color: "#1976B8" }} />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" sideOffset={6}>
+                      {sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
                 <Breadcrumb />
               </div>
               {/* User Profile Picture */}
